@@ -1,9 +1,8 @@
 import dotenv from 'dotenv';
 import YAML from 'yaml';
 import fs from 'fs';
-import { ConfigInterface } from '../imports/types/ConfigTypes';
 
-export function importConfigs(): Promise<ConfigInterface> {
+export function importConfigs(): Promise<any> {
     console.log("Importing config");
     
     return new Promise(async (resolve, reject) => {
