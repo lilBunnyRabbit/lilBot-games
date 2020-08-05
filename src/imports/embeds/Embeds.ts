@@ -7,8 +7,8 @@ export const LeaderboardEmbed = (players: string[], page: string, executing_user
 .addField("---------------------------------------", executing_user_data)
 .setFooter(page);
 
-export const TestGameEmbed = (description: string): MessageEmbed => new MessageEmbed()
+export const TestGameEmbed = (title: string, description: string): MessageEmbed => new MessageEmbed()
 .setColor("RANDOM")
-.setTitle("Game")
+.setTitle(title || "Error")
 .setDescription(description || "Error")
 .addField('\u200b', '\u200b');

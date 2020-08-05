@@ -1,66 +1,58 @@
   
 import { User, DMChannel, TextChannel, NewsChannel, Message, ReactionCollector, MessageEmbed, MessageReaction } from "discord.js";
 import { TestGameEmbed } from "../imports/embeds/Embeds";
+import { generateMaze } from "../game_gen/Maze_gen";
 
-export class TestGame {
+export class Maze {
     private player: User;
     private channel: DMChannel | TextChannel | NewsChannel;
     private message: Message | undefined;
     private reaction_collector: ReactionCollector | undefined;
-    private grid: number[][];
-    private position: number[];
+    private grid: number[][] = [];
+    private position: number[] = [];
     private width: number;
     private height: number;
     private moves: number = 0;
+    private game_max_time: number = 1000 * 60 * 5; // 5 minutes
     private valid_reactions: string[] = [
-        '⬅️', '⬆️', '⬇️', '➡️'
+        '⬅️', '⬆️', '⬇️', '➡️', '🔁'
     ];
-    private game_max_time = 1000 * 60 * 1; // works for 1 minute
 
     constructor(user: User, channel: DMChannel | TextChannel | NewsChannel, width: number, height: number) {
         this.player = user;
         this.channel = channel;
-
         this.width = width;
         this.height = height;
-        this.position = [1, 0];
-
-        // this.grid = new Array(this.height).fill(0).map(() => new Array(this.width).fill(0));
-        this.grid = [
-            [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ],
-            [ 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 ],
-            [ 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1 ],
-            [ 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1 ],
-            [ 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1 ],
-            [ 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1 ],
-            [ 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1 ],
-            [ 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1 ],
-            [ 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1 ],
-            [ 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1 ],
-            [ 1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1 ],
-            [ 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 4 ],
-            [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ]
-        ];
-
-        this.grid[this.position[0]][this.position[1]] = 3;
+        this.newMaze();
         this.channel.send(this.createGameEmbed()).then(this.onFirstSend.bind(this));
     }
 
+    private newMaze() {
+        this.position = [1, 0];
+        this.grid = generateMaze(this.width, this.height); // max 8 x 5
+        this.grid[this.position[0]][this.position[1]] = 3;
+    }
+
     private createGameEmbed(): MessageEmbed {
-        return TestGameEmbed(this.getEmojiGrid());
+        return TestGameEmbed(
+            `${this.player.username}'s Maze (${this.game_max_time / 1000 / 60} minutes)`,
+            this.getEmojiGrid()
+        );
     }
 
     private getEmojiGrid(): string {
-        return this.grid.map((row: number[]) => row.map((el: number) => {
-            switch (el) {
-                case 0: return "⬜";
-                case 1: return "⬛";
-                case 2: return "🔹";
-                case 3: return "😶";
-                case 4: return "⬜";
-                default: return "E"
-            }
-        }).join("")).join("\n");
+        return this.grid.map((row: number[]) => row.map(this.getElement).join("")).join("\n");
+    }
+
+    private getElement(id: number): string {
+        switch (id) {
+            case 0: return "⬛";
+            case 1: return "⬜";
+            case 2: return "🔹";
+            case 3: return "🐰";
+            case 4: return "🥕";
+            default: return "❌"
+        }
     }
 
     private onFirstSend(send_message: Message) {
@@ -68,12 +60,10 @@ export class TestGame {
         this.message = send_message;
         this.reaction_collector = send_message.createReactionCollector(
             this.collectorFilter.bind(this), 
-            // { time: this.game_max_time }
+            { time: this.game_max_time }
         );
         this.reaction_collector.on("collect", this.onCollect.bind(this));
-        this.reaction_collector.on("end", () => {
-            this.message?.reactions.removeAll();
-        });
+        this.reaction_collector.on("end", () => this.end(false, false));
     } 
 
     private collectorFilter(reaction: MessageReaction, user: User) {
@@ -82,14 +72,15 @@ export class TestGame {
             && this.valid_reactions.includes(reaction.emoji.name);
     }
 
-    private updateEmbed(won: boolean) {
+    private updateEmbed(won: boolean, lost: boolean) {
         const old_embed: MessageEmbed | undefined = this.message?.embeds[0];
 
         if(old_embed) {
             const new_embed: MessageEmbed = old_embed
                 .setDescription(this.getEmojiGrid());
-
-            if(won) new_embed.setTitle(`Won! ${this.moves} moves!`)
+                
+            if(won) new_embed.setTitle(`${old_embed.title}\nWon! ${this.moves} moves!`);
+            else if(lost) new_embed.setTitle(`${old_embed.title}\nLost... Time's up!`);
 
             this.message?.edit(new_embed);
         }
@@ -104,6 +95,7 @@ export class TestGame {
             case '⬆️': return this.move(-1, 0);
             case '⬇️': return this.move(1, 0);
             case '➡️': return this.move(0, 1);
+            case '🔁': return this.restart();
             default: return;
         }
     }
@@ -115,9 +107,8 @@ export class TestGame {
             old_position[1] + y
         ];
 
-        if(new_position[0] < 0 || new_position[1] < 0) return console.log("Outside 0");
-        if(new_position[0] > this.width - 1 || new_position[1] > this.height - 1) return console.log("Outside n");
-        if(this.grid[new_position[0]][new_position[1]] === 1) return console.log("Wall");
+        if(new_position[0] < 0 || new_position[1] < 0) return;
+        if(this.grid[new_position[0]][new_position[1]] === 1) return;
 
         this.moves++;
         const won: boolean = this.grid[new_position[0]][new_position[1]] === 4;
@@ -126,12 +117,21 @@ export class TestGame {
         this.grid[new_position[0]][new_position[1]] = 3;
         this.position = new_position;
 
-        if(won) this.end(true);
-        else this.updateEmbed(false);
+        if(won) this.end(true, false);
+        else this.updateEmbed(false, false);
     }
 
-    public end(won: boolean) {
-        this.updateEmbed(won);
+    private restart() {
+        this.moves = 0;
+        this.newMaze();
+        this.updateEmbed(false, false);
+    }
+
+    public end(won: boolean, lost: boolean) {
+        if(won) this.updateEmbed(true, false);
+        else if(lost) this.updateEmbed(false, true);
+        else this.updateEmbed(false, false);
+        this.message?.reactions.removeAll();
         return this.reaction_collector?.stop();
     }
 }
