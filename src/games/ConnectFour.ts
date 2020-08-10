@@ -67,12 +67,15 @@ export class ConnectFour {
             && this.valid_reactions.includes(reaction.emoji.name);
     }
 
-    private updateEmbed(winner?: GuildMember) {
+    private updateEmbed(winner?: GuildMember | "TIE") {
         const old_embed: MessageEmbed | undefined = this.message?.embeds[0];
 
         if(old_embed) {
             const new_embed: MessageEmbed = old_embed.setDescription(this.getEmojiGrid()).setFooter(`${this.current_player.displayName}'s move!`);
-            if(winner) new_embed.addField("Results", `\n<@${winner.id}> won!`);
+            if(winner) {
+                if(winner == "TIE") new_embed.addField("Results", `\nTie!`);
+                else new_embed.addField("Results", `\n<@${winner.id}> won!`);
+            }
             this.message?.edit(new_embed);
         }
     }
@@ -115,6 +118,7 @@ export class ConnectFour {
     }
 
     private checkGrid() {
+        let blank_fiels = 6 * 7;
         for (let j = 0; j < this.grid.length; j++) {
             for (let i = 0; i < this.grid[j].length; i++) {
                 const winningPath: { path: number[][], winner: GuildMember } | undefined = this.checkBlock(i, j);
@@ -125,9 +129,11 @@ export class ConnectFour {
                     }
                     return this.end(winningPath.winner);
                 }
+                if(this.grid[j][i] !== 0) blank_fiels--;
             }
         }
 
+        if(blank_fiels <= 0) return this.end("TIE");
         return this.updateEmbed();
     }
 
@@ -157,7 +163,7 @@ export class ConnectFour {
         }
     }
 
-    public end(winner?: GuildMember) {
+    public end(winner?: GuildMember | "TIE") {
         this.updateEmbed(winner);
         this.message?.reactions.removeAll();
         return this.reaction_collector?.stop();
