@@ -5,5 +5,6 @@ import { Maze } from '../../games/Maze';
 export default new Command("Maze", "This is my description").setCommand(MazeCommand);
 
 function MazeCommand(msg: Discord.Message, args: Array<string>): any {
-    return new Maze(msg.author, msg.channel, 8, 5);
+    if(!msg.member) return;
+    return new Maze(msg.member, msg.channel, 8, 5);
 }

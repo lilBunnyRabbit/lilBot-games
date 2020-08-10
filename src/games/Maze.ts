@@ -1,10 +1,10 @@
   
-import { User, DMChannel, TextChannel, NewsChannel, Message, ReactionCollector, MessageEmbed, MessageReaction } from "discord.js";
-import { TestGameEmbed } from "../imports/embeds/Embeds";
+import { User, DMChannel, TextChannel, NewsChannel, Message, ReactionCollector, MessageEmbed, MessageReaction, GuildMember } from "discord.js";
+import { MazeEmbed } from "../imports/embeds/Embeds";
 import { generateMaze } from "../game_gen/Maze_gen";
 
 export class Maze {
-    private player: User;
+    private player: GuildMember;
     private channel: DMChannel | TextChannel | NewsChannel;
     private message: Message | undefined;
     private reaction_collector: ReactionCollector | undefined;
@@ -18,7 +18,7 @@ export class Maze {
         '⬅️', '⬆️', '⬇️', '➡️', '🔁'
     ];
 
-    constructor(user: User, channel: DMChannel | TextChannel | NewsChannel, width: number, height: number) {
+    constructor(user: GuildMember, channel: DMChannel | TextChannel | NewsChannel, width: number, height: number) {
         this.player = user;
         this.channel = channel;
         this.width = width;
@@ -34,8 +34,8 @@ export class Maze {
     }
 
     private createGameEmbed(): MessageEmbed {
-        return TestGameEmbed(
-            `${this.player.username}'s Maze (${this.game_max_time / 1000 / 60} minutes)`,
+        return MazeEmbed(
+            `${this.player.displayName}'s Maze (${this.game_max_time / 1000 / 60} minutes)`,
             this.getEmojiGrid()
         );
     }
